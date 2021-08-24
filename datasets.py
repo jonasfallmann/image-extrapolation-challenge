@@ -9,12 +9,25 @@ from torchvision import transforms
 import torch
 
 
-class ImageExtrapolation(Dataset):
-
-    def __init__(self, dataset_path: str, augmentation_amount: int):
+class ImageDataset(Dataset):
+    def __init__(self, dataset_path: str):
         self.file_paths = glob.glob(dataset_path + "/**/*.jpg", recursive=True)
         self.file_paths += glob.glob(dataset_path + "/**/*.jpeg", recursive=True)
         self.dataset_path = dataset_path
+
+    def __len__(self) -> int:
+        return len(self.file_paths)
+
+    def __getitem__(self, index):
+        path = self.file_paths[index]
+        img = Image.open(os.path.join(self.dataset_path, path))
+        return img, index
+
+
+class ImageExtrapolation(Dataset):
+
+    def __init__(self, dataset: Dataset, use_augmentation: bool = False):
+        self.dataset = dataset
         self.transformer = transforms.Compose([
             transforms.Resize(size=90),
             transforms.CenterCrop(size=(90, 90))
@@ -23,22 +36,25 @@ class ImageExtrapolation(Dataset):
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.5)
         ])
+        self.use_augmentation = use_augmentation
 
     def __len__(self):
-        return len(self.file_paths)
+        return len(self.dataset)
 
-    def __getitem__(self, index) -> T_co:
-        path = self.file_paths[index]
-        img = Image.open(os.path.join(self.dataset_path, path))
+    def __getitem__(self, index):
+        img, idx = self.dataset.__getitem__(index)
+        if self.use_augmentation:
+            img = self.augmentation(img)
 
         img = self.transformer(img)
         array = np.asarray(img, dtype=np.float32)
-        random_border_top = np.random.randint(4) + 4
-        random_border_right = np.random.randint(4) + 4
-        random_border_bottom = np.random.randint(4) + 3
-        random_border_left = np.random.randint(4) + 3
-        inputs, known, target = self.from_border(array, (random_border_left, random_border_right),
-                                                 (random_border_top, random_border_bottom))
+
+        random_border_width = np.random.randint(2) + 11
+        random_frac = np.random.uniform(0, 1)
+        random_f1 = 1 + np.floor(random_frac * random_border_width).astype(np.int).item()
+        random_f2 = 1 + np.ceil((1-random_frac) * random_border_width).astype(np.int).item()
+        inputs, known, target = self.from_border(array, (random_f1, random_f2),
+                                                 (random_f1, random_f2))
         return inputs, known, target, index
 
     def from_border(self, image_array, border_x, border_y):

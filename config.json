@@ -3,7 +3,7 @@
   "device": "cuda:0",
   "learningrate": 1e-3,
   "weight_decay": 1e-5,
-  "n_updates": 5e4,
+  "n_updates": 8e4,
   "dataset_path": "../data/dataset/uncompressed",
   "network_config": {
     "n_hidden_layers": 3,

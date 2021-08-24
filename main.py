@@ -5,7 +5,7 @@ import tqdm
 
 from torch.utils.tensorboard import SummaryWriter
 from architecture import ImageExtrapolationCNN
-from datasets import ImageExtrapolation, collate_fn
+from datasets import ImageExtrapolation, collate_fn, ImageDataset
 from plotting import plot
 
 
@@ -16,19 +16,27 @@ def main(results_path, network_config: dict, dataset_path: str, learningrate: in
     os.makedirs(plotpath, exist_ok=True)
 
     abs_dataset_path = os.path.abspath(dataset_path)
-    dataset = ImageExtrapolation(abs_dataset_path)
+    dataset = ImageDataset(abs_dataset_path)
 
-    trainingset = torch.utils.data.Subset(dataset, indices=np.arange(int(len(dataset) * (3 / 5))))
+    trainingset_base = torch.utils.data.Subset(dataset, indices=np.arange(int(len(dataset) * (3 / 5))))
     validationset = torch.utils.data.Subset(dataset, indices=np.arange(int(len(dataset) * (3 / 5)),
                                                                        int(len(dataset) * (4 / 5))))
     testset = torch.utils.data.Subset(dataset, indices=np.arange(int(len(dataset) * (4 / 5)),
                                                                  len(dataset)))
 
-    trainloader = torch.utils.data.DataLoader(trainingset, batch_size=5, shuffle=False, num_workers=8,
+    trainingset = ImageExtrapolation(trainingset_base)
+    validationset = ImageExtrapolation(validationset)
+    testset = ImageExtrapolation(testset)
+    trainingset_augment = ImageExtrapolation(trainingset_base, True)
+
+    trainloader = torch.utils.data.DataLoader(trainingset, batch_size=3, shuffle=True, num_workers=6,
                                               collate_fn=collate_fn)
-    valloader = torch.utils.data.DataLoader(validationset, batch_size=5, shuffle=False, num_workers=4,
+    trainloader_augmented = torch.utils.data.DataLoader(trainingset_augment, batch_size=3, shuffle=True,
+                                                        num_workers=6,
+                                                        collate_fn=collate_fn)
+    valloader = torch.utils.data.DataLoader(validationset, batch_size=8, shuffle=False, num_workers=8,
                                             collate_fn=collate_fn)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=5, shuffle=False, num_workers=4,
+    testloader = torch.utils.data.DataLoader(testset, batch_size=8, shuffle=False, num_workers=8,
                                              collate_fn=collate_fn)
 
     writer = SummaryWriter(log_dir=os.path.join(results_path, 'tensorboard'))
@@ -54,8 +62,14 @@ def main(results_path, network_config: dict, dataset_path: str, learningrate: in
     update = 0
     print("starting learning")
     while update < n_updates:
+        augmented_iterator = iter(trainloader_augmented)
         for data in trainloader:
+            inputs_augmented, targets_augmented = next(augmented_iterator)
             inputs, targets = data
+
+            inputs = torch.cat((inputs_augmented, inputs))
+            targets = torch.cat((targets_augmented, targets))
+
             inputs = inputs.to(device)
             targets = targets.to(device)
 
