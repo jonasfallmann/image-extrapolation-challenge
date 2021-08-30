@@ -6,24 +6,18 @@ class ImageExtrapolationCNN(torch.nn.Module):
     def __init__(self):
         super(ImageExtrapolationCNN, self).__init__()
         self.net = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=2, out_channels=32, kernel_size=7, bias=True, padding=int(7 / 2)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(in_channels=32, out_channels=64, kernel_size=7, bias=True, padding=int(7 / 2)),
+            torch.nn.Conv2d(in_channels=2, out_channels=64, kernel_size=7, bias=True, padding=int(7 / 2)),
             torch.nn.ReLU(),
             torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=7, bias=True, padding=int(7 / 2)),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, bias=True, padding=int(5 / 2)),
+            torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=7, bias=True, padding=int(7 / 2)),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, bias=True, padding=int(5 / 2)),
+            torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=7, bias=True, padding=int(7 / 2)),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, bias=True, padding=int(5 / 2)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, bias=True, padding=int(3 / 2)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, bias=True, padding=int(3 / 2)),
+            torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=7, bias=True, padding=int(7 / 2)),
             torch.nn.ReLU()
         )
-        self.out = torch.nn.Conv2d(in_channels=32, out_channels=1, kernel_size=3, bias=True, padding=int(3 / 2))
+        self.out = torch.nn.Conv2d(in_channels=64, out_channels=1, kernel_size=7, bias=True, padding=int(7 / 2))
         pass
 
     def forward(self, x):

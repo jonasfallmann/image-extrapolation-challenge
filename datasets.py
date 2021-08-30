@@ -1,12 +1,15 @@
 import glob
+import threading
 
+import PIL.Image
 from torch.utils.data import Dataset
-from torch.utils.data.dataset import T_co
 import os
 from PIL import Image
 import numpy as np
 from torchvision import transforms
 import torch
+
+from normalization import NormalizationProvider
 
 
 class ImageDataset(Dataset):
@@ -26,7 +29,9 @@ class ImageDataset(Dataset):
 
 class ImageExtrapolation(Dataset):
 
-    def __init__(self, dataset: Dataset, use_augmentation: bool = False):
+    def __init__(self, dataset: Dataset, normalization_provider: NormalizationProvider,
+                 use_augmentation: bool = False,
+                 crop_randomly: bool = False):
         self.dataset = dataset
         self.transformer = transforms.Compose([
             transforms.Resize(size=90),
@@ -34,25 +39,45 @@ class ImageExtrapolation(Dataset):
         ])
         self.augmentation = transforms.Compose([
             transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomVerticalFlip(p=0.5)
+            transforms.RandomVerticalFlip(p=0.5),
         ])
+
+        self.random_crop = transforms.Compose([
+            transforms.RandomResizedCrop(size=(90, 90), scale=(0.6, 1.0), ratio=(1, 1),
+                                         interpolation=PIL.Image.BILINEAR)
+        ])
+        self.crop_randomly = crop_randomly
         self.use_augmentation = use_augmentation
+        self.normalization_provider = normalization_provider
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, index):
         img, idx = self.dataset.__getitem__(index)
-        if self.use_augmentation:
-            img = self.augmentation(img)
 
-        img = self.transformer(img)
-        array = np.asarray(img, dtype=np.float32)
+        if self.use_augmentation:
+            if self.crop_randomly:
+                img = self.random_crop(img)
+            else:
+                img = self.augmentation(img)
+
+        if not self.crop_randomly:
+            img = self.transformer(img)
+
+        # Normalize Pixel Values
+        array = np.asarray(img, dtype=np.float32) / 255
+
+        curr_mean, curr_std = self.normalization_provider.get_values()
+
+        # Center pixel values to dataset mean / std
+        # array = array - curr_mean
+        # array = array / curr_std
 
         random_border_width = np.random.randint(2) + 11
         random_frac = np.random.uniform(0, 1)
         random_f1 = 1 + np.floor(random_frac * random_border_width).astype(np.int).item()
-        random_f2 = 1 + np.ceil((1-random_frac) * random_border_width).astype(np.int).item()
+        random_f2 = 1 + np.ceil((1 - random_frac) * random_border_width).astype(np.int).item()
         inputs, known, target = self.from_border(array, (random_f1, random_f2),
                                                  (random_f1, random_f2))
         return inputs, known, target, index
@@ -79,7 +104,7 @@ class ImageExtrapolation(Dataset):
         if remaining_height < 16 or remaining_width < 16:
             raise ValueError
 
-        input_array = np.zeros_like(image_array)
+        input_array = np.full_like(image_array, np.min(image_array))
         input_array[border_x[0]:-border_x[1], border_y[0]:-border_y[1]] = image_array[border_x[0]:-border_x[1],
                                                                           border_y[0]:-border_y[1]]
 
@@ -98,10 +123,8 @@ class ImageExtrapolation(Dataset):
 def collate_fn(batch):
     features = torch.zeros(len(batch), 2, 90, 90).to(dtype=torch.float32)
     labels = torch.zeros(len(batch), 2475).to(dtype=torch.float32)
-
     for index, elem in enumerate(batch):
         features[index][0] = torch.from_numpy(batch[index][0])
         features[index][1] = torch.from_numpy(batch[index][1])
         labels[index][:len(elem[2])] = torch.from_numpy(elem[2])[:]
-
     return features, labels

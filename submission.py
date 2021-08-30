@@ -8,7 +8,7 @@ import numpy as np
 import architecture
 
 
-def evaluate_model(inputs: str, model_path: str, out_path: str, plot_path: str):
+def evaluate_model(inputs: str, model_path: str, out_path: str, plot_path: str, mean: float, std: float):
     abs_inputs_path = os.path.abspath(inputs)
     with open(abs_inputs_path, 'rb') as infile:
         inputs = pkl.load(infile)
@@ -27,18 +27,19 @@ def evaluate_model(inputs: str, model_path: str, out_path: str, plot_path: str):
 
     net.to(device)
     outputs = []
-    update_progess_bar = tqdm.tqdm(total=len(image_arrays),  position=0)  # progressbar
+    update_progess_bar = tqdm.tqdm(total=len(image_arrays), position=0)  # progressbar
 
     for idx, elem in enumerate(image_arrays):
         input_d = torch.zeros(1, 2, 90, 90)
-        input_d[0][0] = torch.tensor(elem)
+        img = (elem / 255.0)
+        input_d[0][0] = torch.tensor(img)
         input_d[0][1] = torch.tensor(known_arrays[idx])
         input_d = input_d.to(device)
         output, flat = net(input_d)
         length = 90 * 90 - (90 - borders_x[idx][0] - borders_x[idx][1]) * (90 - borders_y[idx][0] - borders_y[idx][1])
-        trimmed = flat[0][:length]
+        trimmed = flat[0][:length] * 255
         outputs.append(trimmed.detach().cpu().numpy().astype(np.uint8))
-        plot(input_d.detach().cpu().numpy(), output.detach().cpu().numpy(),
+        plot(input_d.detach().cpu().numpy(), output.detach().cpu().numpy(), 1, 1,
              plotpath, idx)
         update_progess_bar.update()
 
@@ -54,5 +55,7 @@ if __name__ == '__main__':
     parser.add_argument("--model", type=str, help="Path to input pickle file")
     parser.add_argument("--out", type=str, help="Path to input pickle file")
     parser.add_argument("--plots", type=str, help="Path to input pickle file")
+    parser.add_argument("--mean", type=float, help="")
+    parser.add_argument("--std", type=float, help="")
     args = parser.parse_args()
-    evaluate_model(args.inputs, args.model, args.out, args.plots)
+    evaluate_model(args.inputs, args.model, args.out, args.plots, args.mean, args.std)

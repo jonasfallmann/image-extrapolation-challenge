@@ -2,16 +2,20 @@ import os
 from matplotlib import pyplot as plt
 
 
-def plot(inputs, predictions, path, update):
+def plot(inputs, predictions, mean, std, path, update):
     """Plotting the inputs, targets, and predictions to file `path`"""
     os.makedirs(path, exist_ok=True)
     fig, ax = plt.subplots(2, 2)
     ax[0, 1].remove()
 
+    denormalize = mean is not None and std is not None
     for i in range(len(inputs)):
         ax[0, 0].clear()
         ax[0, 0].set_title('input')
-        ax[0, 0].imshow(inputs[i, 0], cmap=plt.cm.gray, interpolation='none', vmin=0, vmax=255)
+        ax[0, 0].imshow((inputs[i, 0]) * 255 if denormalize else inputs[i, 0],
+                        cmap=plt.cm.gray,
+                        interpolation='none',
+                        vmin=0, vmax=255)
         ax[0, 0].set_axis_off()
         # ax[0, 1].clear()
         # ax[0, 1].set_title('targets')
@@ -19,7 +23,10 @@ def plot(inputs, predictions, path, update):
         # ax[0, 1].set_axis_off()
         ax[1, 0].clear()
         ax[1, 0].set_title('predictions')
-        ax[1, 0].imshow(predictions[i, 0], cmap=plt.cm.gray, interpolation='none', vmin=0, vmax=255)
+        ax[1, 0].imshow(
+            (predictions[i, 0]) * 255 if denormalize else inputs[i, 0],
+            cmap=plt.cm.gray,
+            interpolation='none', vmin=0, vmax=255)
         ax[1, 0].set_axis_off()
 
         ax[1, 1].clear()
@@ -28,7 +35,9 @@ def plot(inputs, predictions, path, update):
         mask = inputs[i][1]
         asd = predictions[i][0][mask == 0]
         merged[mask == 0] = predictions[i][0][mask == 0]
-        ax[1, 1].imshow(merged, cmap=plt.cm.gray, interpolation='none', vmin=0, vmax=255)
+        ax[1, 1].imshow((merged) * 255 if denormalize else inputs[i, 0],
+                        cmap=plt.cm.gray, interpolation='none',
+                        vmin=0, vmax=255)
         ax[1, 1].set_axis_off()
 
         fig.tight_layout()

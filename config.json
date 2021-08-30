@@ -3,7 +3,9 @@
   "device": "cuda:0",
   "learningrate": 1e-3,
   "weight_decay": 1e-5,
-  "n_updates": 8e4,
+  "n_updates": 10e4,
+  "mean": 0.4860186208202778,
+  "std": 0.2068902135790628,
   "dataset_path": "../data/dataset/uncompressed",
   "network_config": {
     "n_hidden_layers": 3,
