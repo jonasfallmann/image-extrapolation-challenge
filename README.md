@@ -13,4 +13,4 @@ Predict the unknown parts of the test set images
 - The borders containing unknown pixels in the test set images will be at least 5 pixels wide on each side.
 
 # Sample output
-![alt text](https://github.com/jonasfallmann/image-extrapolation-challenge/tree/main/sample/0000016_00.png "Sample network ouput")
+<img width="964" alt="Sample network ouput" src="https://github.com/jonasfallmann/image-extrapolation-challenge/blob/main/sample/0000016_00.png">
